@@ -1,4 +1,4 @@
-import { Composio } from '@composio/core';
+import { Composio, OpenAIProvider } from '@composio/core';
 import dotenv from "dotenv"
 dotenv.config();
 
