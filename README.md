@@ -10,8 +10,4 @@ It automatically fetches emails from Gmail (e.g., with a specific label like "Ta
 
 -> Fetches emails from Gmail and converts them into structured tasks.
 
--> Stores tasks in a Notion database with fields like:
-Task Title (Email subject)
-Description (Email body snippet)
-Received At (Timestamp)
-Status (default: "To-Do")
+-> Stores tasks in Notion
