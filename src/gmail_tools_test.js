@@ -15,6 +15,20 @@ async function readMail(userid) {
     return emails;
 }
 
+async function readMailTool(userid) {
+    const emails = await composio.tools.execute(
+        "GMAIL_FETCH_EMAILS",
+        {
+            userId: userid,   // required
+            arguments: {
+                query: "HDFC",
+                maxResults: 5
+            }
+        }
+    );
+    return emails;
+}
+
 async function sendMail(userid) {
     const mail_body = "Hello, this is a tester mail";
     const mail_subject = "Composio test";
@@ -32,7 +46,10 @@ async function sendMail(userid) {
     return sendResult;
 }
 
-const emails = await readMail(my_id);
+// const emails = await readMail(my_id);
+// console.log(emails.data);
+// const mailResult = sendMail(my_id);
+// console.log(mailResult);
+
+const emails = await readMailTool(my_id);
 console.log(emails.data);
-const mailResult = sendMail(my_id);
-console.log(mailResult);
