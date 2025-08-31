@@ -9,7 +9,7 @@ async function test() {
 // test();
 
 const gmail_auth_config_id = "ac_HioiheaUmjHm";
-const userId = "devansh_student";
+const userId = "college_id";
 
 function askQuestion(query) {
     const rl = readline.createInterface({
