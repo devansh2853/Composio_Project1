@@ -4,13 +4,13 @@ import { AuthScheme } from '@composio/core';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const userId = "devansh_student";
+const userId = "college_id";
 const gemini_auth_config_id = "ac_HtU4oxSf4LYy";
 async function authenticateToolkit(userId, authConfigId) {
   // TODO: Replace this with a method to retrieve the API key from the user.
   // In production, this should be securely retrieved from your database or user input.
   // For example: const userApiKey = await getUserApiKey(userId);
-  const userApiKey = process.env.GEMINI_API_KEY; // Replace with actual API key
+  const userApiKey = process.env.GEMINI_API_KEY2; // Replace with actual API key
   
   const connectionRequest = await composio.connectedAccounts.initiate(
     userId,

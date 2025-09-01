@@ -25,9 +25,12 @@ Day 1
 4. Using Gmail's tools:
    In the execute tools section of the docs, it showed how to use anthropic or versel to execute the code. Experimented with composio.tools to find the composio.tools.execute() method. Ran the tools using it. Also ran the tools using the composio.provider.execute() method. It is a bit unclear what the difference between these 2 methods is. Got the same response from both methods.
 
+Day 2
+
 5. Connecting to Notion:
    Read the docs for Notion connection
    Made a Notion AuthConfig on composio.
    same code as connecting to google with just the the authconfig updated. Turned out to be quite simple this time.
 
 6. Using Notion's tools:
+   This again proved to be quite a challenge without using an LLM. The tools had a detailed description in the docs, but there was no example of how to execute the code with something simple like composio.tools.execute() or composio.provider.execute()

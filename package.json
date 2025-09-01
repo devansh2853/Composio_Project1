@@ -13,6 +13,7 @@
   "dependencies": {
     "@composio/core": "^0.1.48",
     "dotenv": "^17.2.1",
+    "express": "^5.1.0",
     "html-to-text": "^9.0.5"
   }
 }

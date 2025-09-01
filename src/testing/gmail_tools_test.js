@@ -21,7 +21,7 @@ async function readMailTool(userid) {
         {
             userId: userid,   // required
             arguments: {
-                query: "HDFC",
+                query: "Assignment live",
                 maxResults: 5
             }
         }
