@@ -33,4 +33,17 @@ Day 2
    same code as connecting to google with just the the authconfig updated. Turned out to be quite simple this time.
 
 6. Using Notion's tools:
-   This again proved to be quite a challenge without using an LLM. The tools had a detailed description in the docs, but there was no example of how to execute the code with something simple like composio.tools.execute() or composio.provider.execute()
+   This again proved to be quite a challenge without using an LLM. The tools had a detailed description in the docs, but there was no example of how to execute the code with something simple like composio.tools.execute() or composio.provider.execute().
+
+Day 3
+
+6. Setting Up Gemini:
+   I wanted to use an LLM for classification of the mails. It would be much easier if I could use an LLM provider for this as then the tool calls would be very easy. But Anthropic, OpenAI both require credits to use their API key, so I decided to go with Gemini. Composio doesn't support Gemini as a provider in TypeScript(javascript in my case). Because of this I had to resolve to using Gemini as a tool inside the project instead of the provider. This would mean I would have to handle parsing the response of Gemini myself. Connecting to Gemini was quite easy after generating the Auth Config on the dashboard. Executing the generate content tool was also quite easy.
+
+7. Classification:
+   Used gemini itself to generate a prompt that would determine if the mail contained an assignment allotment and return a JSON object consiting of appropriate key-value pairs.
+   Had a bit of issue in parsing the response object returned by gemini. Ultimately was able to do it by fine tuning the prompt and replacing the additional tokens being added by gemini.
+
+Day 4
+
+8. Setting up triggers:
