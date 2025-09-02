@@ -47,3 +47,10 @@ Day 3
 Day 4
 
 8. Setting up triggers:
+   The format for setting up triggers was quite simple because of the examples in the docs and on the dashboard. It wasn't clear how to set the url for the endpoint for the trigger using the SDK. The docs showed how to do it via the dashboard. Tried to pass it as an arguement in the .create() method but didn't work. Ended up just adding the endpoing directly via the dashboard. Used ngrok for setting up the url.
+
+9. Listening to triggeres:
+
+10. Workflow
+
+11. Database Setup:
