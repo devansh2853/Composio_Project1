@@ -47,10 +47,10 @@ Day 3
 Day 4
 
 8. Setting up triggers:
-   The format for setting up triggers was quite simple because of the examples in the docs and on the dashboard. It wasn't clear how to set the url for the endpoint for the trigger using the SDK. The docs showed how to do it via the dashboard. Tried to pass it as an arguement in the .create() method but didn't work. Ended up just adding the endpoing directly via the dashboard. Used ngrok for setting up the url.
+   The format for setting up triggers was quite simple because of the examples in the docs and on the dashboard. It wasn't clear how to set the url for the endpoint for the trigger using the SDK. The docs showed how to do it via the dashboard. Tried to pass it as an arguement in the .create() method but didn't work. Ended up just adding the endpoing directly via the dashboard. Used ngrok for setting up the url. Also all the triggers seem to have the same endpoint on the dashboard, there's no way to have different endpoint urls for different triggers.
 
-9. Listening to triggeres:
-
+9. Listening to triggers:
+   Pretty straightforward. Had to setup ngrok to generate a url for local running. Every time I ran the server, ngrok generated a different url which I then had to manually go and update at the composio dashboard which was a hassle in case of making small changes because of an error.
 10. Workflow
 
 11. Database Setup:
