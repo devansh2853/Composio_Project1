@@ -9,6 +9,7 @@ import { getAuthConfigIdForProvider } from './config/authConfigs.js';
 import { AuthScheme } from '@composio/core';
 import { handleMailTrigger } from './MailToNotionLog.js';
 
+
 const app = express();
 app.use(express.json());
 
@@ -120,6 +121,9 @@ app.post('/users/:userId/connections/initiate', async (req, res) => {
             // For other providers, use OAuth flow
             cr = await composio.connectedAccounts.initiate(userId, authConfigId);
             db.prepare('INSERT INTO pending_connections (user_id, provider, connection_request_id, created_at) VALUES (?, ?, ?, ?)').run(userId, provider, cr.id, Date.now());
+            if (provider === 'notion') {
+
+            }
             return res.json({ connection_request_id: cr.id, redirect_url: cr.redirectUrl });
         }
     } catch (err) {

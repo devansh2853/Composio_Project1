@@ -51,6 +51,18 @@ Day 4
 
 9. Listening to triggers:
    Pretty straightforward. Had to setup ngrok to generate a url for local running. Every time I ran the server, ngrok generated a different url which I then had to manually go and update at the composio dashboard which was a hassle in case of making small changes because of an error.
+
+Day 5
+
 10. Workflow
+    Made a basic server file to handle incoming triggers which would handle the entire proccess of reading the trigger payload, identification of assignments and logging into notion.
 
 11. Database Setup:
+    Setup a very basic database consisting of user, user_connections, pending_connections, user_settings tables.
+    Created APIs on server.js for Sign up and Login
+
+Day 6
+
+12. Front End:
+    Created a very basic front end that has authentication and buttons to initiate connections to gmail, notion and gemini and to create trigger.
+    The connection status is updated on the page on every reload and after every new connection made.
