@@ -1,3 +1,4 @@
+src/testing
 .vscode/
 *.env
 node_modules/

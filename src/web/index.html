@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Mail → Notion Setup</title>
+  </head>
+  <body>
+    <h2>Auth</h2>
+    <div id="authSection">
+      <input id="username" placeholder="username" />
+      <input id="password" placeholder="password" type="password" />
+      <button onclick="signup()">Signup</button>
+      <button onclick="login()">Login</button>
+    </div>
+    <div id="userSection" style="display:none;">
+      <p>Logged in as: <span id="userName"></span> (<span id="userId"></span>) <button onclick="logout()">Logout</button></p>
+    </div>
+
+
+
+    <h2>Notion</h2>
+    <div>
+      <input id="notionDb" placeholder="Notion database_id" />
+      <button onclick="saveNotionDb()">Save Notion DB</button>
+    </div>
+
+    <h2>Connections</h2>
+    <div>
+      <button onclick="initiate('gmail')">Initiate Gmail</button>
+      <button onclick="initiate('notion')">Initiate Notion</button>
+    </div>
+    <div>
+      <input id="geminiApiKey" placeholder="Gemini API Key for connection" />
+      <button onclick="initiateGemini()">Initiate Gemini</button>
+    </div>
+    <div>
+      <p>Gmail Status: <span id="gmailStatus">Not connected</span></p>
+      <p>Notion Status: <span id="notionStatus">Not connected</span></p>
+      <p>Gemini Status: <span id="geminiStatus">Not connected</span></p>
+    </div>
+
+    <h2>Gmail Trigger</h2>
+    <div>
+      <button onclick="createGmailTrigger()">Create Gmail Trigger</button>
+    </div>
+    <div>
+      <p>Trigger Status: <span id="triggerStatus">Not created</span></p>
+    </div>
+
+    <pre id="out"></pre>
+
+    <script>
+      const out = (msg) => {
+        const el = document.getElementById('out');
+        el.textContent = (el.textContent + '\n' + msg).trim();
+      };
+      const userIdEl = document.getElementById('userId');
+      const userNameEl = document.getElementById('userName');
+      const authSection = document.getElementById('authSection');
+      const userSection = document.getElementById('userSection');
+      let userId = localStorage.getItem('user_id') || '';
+      let username = localStorage.getItem('username') || '';
+
+      function setAuthUI() {
+        if (userId) {
+          authSection.style.display = 'none';
+          userSection.style.display = '';
+          userIdEl.textContent = userId;
+          userNameEl.textContent = username;
+          refreshStatuses();
+        } else {
+          authSection.style.display = '';
+          userSection.style.display = 'none';
+          document.getElementById('gmailStatus').textContent = 'Not connected';
+          document.getElementById('notionStatus').textContent = 'Not connected';
+          document.getElementById('geminiStatus').textContent = 'Not connected';
+        }
+      }
+
+      async function signup() {
+        const inputUsername = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const r = await fetch('/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: inputUsername, password })});
+        const j = await r.json();
+        if (j.user_id) { userId = j.user_id; username = inputUsername; localStorage.setItem('user_id', userId); localStorage.setItem('username', username); setAuthUI(); }
+        out(JSON.stringify(j));
+      }
+      async function login() {
+        const inputUsername = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const r = await fetch('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: inputUsername, password })});
+        const j = await r.json();
+        if (j.user_id) { userId = j.user_id; username = j.username || inputUsername; localStorage.setItem('user_id', userId); localStorage.setItem('username', username); setAuthUI(); }
+        out(JSON.stringify(j));
+      }
+      function logout() {
+        localStorage.removeItem('user_id');
+        localStorage.removeItem('username');
+        userId = '';
+        username = '';
+        setAuthUI();
+      }
+
+      async function saveNotionDb() {
+        if (!userId) return out('No user_id');
+        const database_id = document.getElementById('notionDb').value;
+        const r = await fetch(`/users/${userId}/notion-db`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ database_id })});
+        out(JSON.stringify(await r.json()));
+      }
+      async function initiate(provider) {
+        if (!userId) return out('No user_id');
+        const r = await fetch(`/users/${userId}/connections/initiate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider })});
+        const j = await r.json();
+        if (j.redirect_url) {
+          window.open(j.redirect_url, '_blank');
+          out(`Opened ${provider} auth window. Polling for completion...`);
+          finalizeConnection(provider); 
+        }
+        out(JSON.stringify(j));
+      }
+      
+      async function initiateGemini() {
+        if (!userId) return out('No user_id');
+        const api_key = document.getElementById('geminiApiKey').value;
+        if (!api_key) return out('Gemini API key required');
+        
+        const statusEl = document.getElementById('geminiStatus');
+        statusEl.textContent = 'Connecting...';
+        
+        const r = await fetch(`/users/${userId}/connections/initiate`, { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ provider: 'gemini', api_key })
+        });
+        const j = await r.json();
+        
+        if (j.immediate && j.connection_id) {
+          statusEl.textContent = 'Connected ✓';
+          out(`Gemini connection successful!`);
+        } else if (j.connection_request_id) {
+          out(`Gemini connection initiated. Finalizing...`);
+          finalizeConnection('gemini');
+        } else {
+          statusEl.textContent = 'Failed ✗';
+          out(`Failed to connect Gemini: ${j.error}`);
+        }
+        out(JSON.stringify(j));
+      }
+      
+      async function finalizeConnection(provider) {
+        if (!userId) return;
+
+        const statusEl = document.getElementById(provider + 'Status');
+        statusEl.textContent = 'Finalizing... (this may take a moment)';
+
+        try {
+            const r = await fetch(`/users/${userId}/connections/finalize-latest`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider })
+            });
+
+            const j = await r.json();
+
+            if (r.ok && j.ok) {
+                statusEl.textContent = 'Connected ✓';
+                out(`${provider} connection successful! ID: ${j.connection_id}`);
+            } else {
+                statusEl.textContent = 'Failed ✗';
+                out(`${provider} connection failed: ${j.error || 'Unknown error'}`);
+            }
+        } catch (err) {
+            statusEl.textContent = 'Failed ✗';
+            out(`Error finalizing ${provider} connection: ${err.message}`);
+        }
+    }
+
+      async function refreshStatuses() {
+        if (!userId) return;
+        try {
+          const r = await fetch(`/users/${userId}/connections/status`);
+          const s = await r.json();
+          document.getElementById('gmailStatus').textContent = s.gmail ? 'Connected ✓' : 'Not connected';
+          document.getElementById('notionStatus').textContent = s.notion ? 'Connected ✓' : 'Not connected';
+          document.getElementById('geminiStatus').textContent = s.gemini ? 'Connected ✓' : 'Not connected';
+          document.getElementById('triggerStatus').textContent = s.trigger ? 'Created ✓' : 'Not created';
+        } catch (e) {
+          out('Failed to fetch connection statuses');
+        }
+      }
+      
+      async function createGmailTrigger() {
+        if (!userId) return out('No user_id');
+        
+        const triggerStatusEl = document.getElementById('triggerStatus');
+        triggerStatusEl.textContent = 'Creating...';
+        
+        const r = await fetch(`/users/${userId}/triggers/gmail`, { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const j = await r.json();
+        
+        if (j.success) {
+          triggerStatusEl.textContent = 'Created ✓';
+          out(`Gmail trigger created: ${j.trigger_id}`);
+        } else {
+            await refreshStatuses();
+            const updatedTriggerStatusEl = document.getElementById('triggerStatus');
+            if (updatedTriggerStatusEl.textContent === 'Created ✓') {
+                updatedTriggerStatusEl.textContent = 'Failed to create new trigger. The old one still works';
+            }
+            else {
+                updatedTriggerStatusEl.textContent = 'Failed ✗';
+                out(`Failed to create trigger: ${j.error}`);
+            }
+        }
+      }
+
+      // Initialize UI on load
+      setAuthUI();
+    </script>
+  </body>
+  </html>
+
+

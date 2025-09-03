@@ -1,4 +1,4 @@
-import composio from './utils/composio.js';
+import composio from '../utils/composio.js';
 const my_id = "devansh_student";
 
 // async function addRow(userid) {
@@ -67,7 +67,7 @@ async function addRow(userId) {
 // const rowAddition = await addRow(my_id);
 // console.log(rowAddition);
 const props = [
-    { name: "Name", type: "title", value: "NPTEL Week 3 Quiz" },     // required
+    { name: "Name", type: "title", value: "NPTEL Week 4 Quiz" },     // required
     { name: "Due Date", type: "date", value: "2025-09-05" },            // ISO date (YYYY-MM-DD)
     { name: "status", type: "select", value: "Pending" },               // must exist in Notion options
     { name: "Email Link", type: "url", value: "https://mail.google.com/mail/u/0/#inbox/THREAD_ID" },
@@ -76,6 +76,7 @@ const props = [
     { name: "Title", type: "rich_text", value: "Assignment 1" },
 ];
 const exec = await composio.tools.execute("NOTION_INSERT_ROW_DATABASE", {
+  connectedAccountId: "ca_MMtlVQ3pCGkD",
   userId: my_id,
   arguments: {
     database_id: "a253316f3f1349fc9b9224e2a0ee7f1d",
@@ -83,13 +84,7 @@ const exec = await composio.tools.execute("NOTION_INSERT_ROW_DATABASE", {
       {
         name: "Name",   // field name in your DB
         type: "title",  // required type
-        value: "Test row from Composio 2"
-        },
-        {
-            name: "Notes",
-            type: "rich_text",
-            value: "This is a tester row, checking if multiple fields are being added"
-
+        value: "Test row from Composio 4"
         }
     ]
   }

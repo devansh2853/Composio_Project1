@@ -1,11 +1,23 @@
 import composio from './utils/composio.js';
 import { convert } from 'html-to-text';
+import db from './db.js';
 
 async function geminiClassification(user_id, cust_prompt) {
     try {
+        // Check if user has a Gemini connection
+        const geminiConnection = db.prepare('SELECT connection_id FROM user_connections WHERE user_id = ? AND provider = ?').get(user_id, 'gemini');
+        if (!geminiConnection) {
+            return {
+                successful: false,
+                error: 'Gemini connection not found. Please connect Gemini first.'
+            };
+        }
+
+        // Use Composio Gemini tool with user's connection
         const response = await composio.tools.execute(
             "GEMINI_GENERATE_CONTENT",
             {
+                connectedAccountId: geminiConnection.connection_id,
                 userId: user_id,
                 arguments: {
                     model: "gemini-1.5-flash",
@@ -76,10 +88,19 @@ function parseGeminiResponse(response, messageID) {
 
 async function logToNotion(prop, user_id, db_id) {
     try {
+        // Check if user has a Notion connection
+        const notionConnection = db.prepare('SELECT connection_id FROM user_connections WHERE user_id = ? AND provider = ?').get(user_id, 'notion');
+        if (!notionConnection) {
+            return {
+                successful: false,
+                error: 'Notion connection not found. Please connect Notion first.'
+            };
+        }
         const exec = await composio.tools.execute(
         "NOTION_INSERT_ROW_DATABASE",
-        {
-            userId: "devansh_student",
+            {
+            connectedAccountId: notionConnection.connection_id,
+            userId: user_id,
             arguments: {
                 database_id: db_id,
                 properties: prop
@@ -106,8 +127,15 @@ async function handleMailTrigger(mail) {
         sender: mail.sender,
         content: convert(mail.message_text)
     };
-    const user_id = "college_id";
-    const db_id = "a253316f3f1349fc9b9224e2a0ee7f1d";
+    // Expect user_id to be present in trigger config or extras
+    const user_id = mail?.user_id || mail?.extras?.user_id || "";
+    if (!user_id) return { successful: false, error: 'user_id missing in trigger payload' };
+
+    // Load per-user Notion database id
+    const settings = db.prepare('SELECT notion_database_id FROM user_settings WHERE user_id = ?').get(user_id);
+    const db_id = settings?.notion_database_id;
+    if (!db_id) return { successful: false, error: 'Notion database_id not set for user' };
+
     const cust_prompt = `Analyze the following JSON string containing an email object. Identify whether the emails is assigning a new assignment with a specific deadline.
 
                     For a qualifying email, extract the following information and return it as a JSON objects.

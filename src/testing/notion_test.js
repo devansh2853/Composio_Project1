@@ -1,5 +1,5 @@
 import readline from 'readline';
-import composio from "./utils/composio.js";
+import composio from "../utils/composio.js";
 
 const userId = "devansh_student";
 const notion_auth_config_id = 'ac_ynlCvPhqxaiw';
