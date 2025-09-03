@@ -2,3 +2,6 @@
 *.env
 node_modules/
 .DS_Store
+data.sqlite
+data.sqlite-shm
+data.sqlite-wal
