@@ -71,8 +71,6 @@ app.get('/users/:userId/connections/status', (req, res) => {
     return res.json(status);
 });
 
-
-
 // Store Notion database id per user
 app.post('/users/:userId/notion-db', async (req, res) => {
     const { userId } = req.params;
@@ -184,7 +182,7 @@ app.post('/users/:userId/triggers/gmail', async (req, res) => {
         const gmailConnection = db.prepare('SELECT connection_id FROM user_connections WHERE user_id = ? AND provider = ?').get(userId, 'gmail');
         const notionConnection = db.prepare('SELECT connection_id FROM user_connections WHERE user_id = ? AND provider = ?').get(userId, 'notion');
         const geminiConnection = db.prepare('SELECT connection_id FROM user_connections WHERE user_id = ? AND provider = ?').get(userId, 'gemini');
-        const notionDBConnection = db.prepare('SELECT database_id from user_settings WHERE user_id = ?').get(userId);
+        const notionDBConnection = db.prepare('SELECT notion_database_id from user_settings WHERE user_id = ?').get(userId);
         if (!gmailConnection) return res.status(400).json({ error: 'Gmail connection not found. Please connect Gmail first.' });
         if (!notionConnection) return res.status(400).json({ error: 'Notion connection not found. Please connect Notion first.' });
         if (!geminiConnection) return res.status(400).json({ error: 'Gemini connection not found. Please connect Gemini using API key first.' });
