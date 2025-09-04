@@ -20,7 +20,7 @@
 
     <h2>Notion</h2>
     <div>
-      <input id="notionDb" placeholder="Notion database_id" />
+      <input id="notionPage" placeholder="Notion Page Id" />
       <button onclick="saveNotionDb()">Save Notion DB</button>
     </div>
 
@@ -103,8 +103,8 @@
 
       async function saveNotionDb() {
         if (!userId) return out('No user_id');
-        const database_id = document.getElementById('notionDb').value;
-        const r = await fetch(`/users/${userId}/notion-db`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ database_id })});
+        const page_id = document.getElementById('notionPage').value;
+        const r = await fetch(`/users/${userId}/notion-db`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ page_id })});
         out(JSON.stringify(await r.json()));
       }
       async function initiate(provider) {

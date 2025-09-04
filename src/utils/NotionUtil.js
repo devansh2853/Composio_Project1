@@ -1,6 +1,6 @@
 import composio from './composio.js';
 
-export async function searchNotionPage(userId, connectedAccountId, query, pageSize = 15) {
+export async function searchNotionPage(userId, connectedAccountId, query="", pageSize = 15) {
   try {
     const resp = await composio.tools.execute(
       "NOTION_SEARCH_NOTION_PAGE",
@@ -15,21 +15,30 @@ export async function searchNotionPage(userId, connectedAccountId, query, pageSi
     );
     const responseData = resp.data?.response_data;
     if (resp.successful && responseData?.results) {
-      return responseData.results.map(page => ({
-        id: page.id,
+      const firstPage = responseData.results[0];
+      return {
+        successful: true,
+        id: firstPage.id,
         title:
-          page.properties?.title ||
-          page.properties?.Name?.title?.[0]?.plain_text ||
-          page.object || // fallback
+          firstPage.properties?.title ||
+          firstPage.properties?.Name?.title?.[0]?.plain_text ||
+          firstPage.object || // fallback
           "Untitled",
-      }));
+      };
     } else {
       console.error("❌ Notion search failed:", resp.error || "No results");
-      return [];
+      return {
+        successful: false,
+        error: "Notion Search failed. No valid page access given"
+      };
     }
   } catch (err) {
+
     console.error("⚡ Exception during Notion search:", err);
-    return [];
+    return {
+      successful: false,
+      error: err.message
+    };
   }
 }
 
@@ -53,7 +62,10 @@ export async function createNotionDatabase(userId, connectedAccountId, parent_id
         },
       }
     );
-
+    if (!resp.successful) return {
+      successful: false,
+      error: "Page not found. Please check the ID"
+      }
     const url = resp.data.url;
     const url_parts = url.split('/');
     const db_id = url_parts[url_parts.length - 1];

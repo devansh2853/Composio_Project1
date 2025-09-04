@@ -8,6 +8,8 @@ import composio from './utils/composio.js';
 import { getAuthConfigIdForProvider } from './config/authConfigs.js';
 import { AuthScheme } from '@composio/core';
 import { handleMailTrigger } from './MailToNotionLog.js';
+import {createNotionDatabase, searchNotionPage} from './utils/NotionUtil.js';
+import { connect } from "http2";
 
 
 const app = express();
@@ -61,8 +63,8 @@ app.get('/users/:userId/connections/status', (req, res) => {
     const { userId } = req.params;
     const rows = db.prepare('SELECT provider, connection_id FROM user_connections WHERE user_id = ?').all(userId);
     const status = { gmail: false, notion: false, gemini: false, trigger: false};
-    const trigger = db.prepare('SELECT triggerID from user_settings WHERE user_id = ?').all(userId);
-    if (trigger[0]) status.trigger = true;
+    const trigger = db.prepare('SELECT triggerId from user_settings WHERE user_id = ?').get(userId);
+    if (trigger) status.trigger = true;
     for (const r of rows) {
         if (r.provider in status) status[r.provider] = !!r.connection_id;
     }
@@ -72,12 +74,16 @@ app.get('/users/:userId/connections/status', (req, res) => {
 
 
 // Store Notion database id per user
-app.post('/users/:userId/notion-db', (req, res) => {
+app.post('/users/:userId/notion-db', async (req, res) => {
     const { userId } = req.params;
-    const { database_id } = req.body;
-    if (!database_id) return res.status(400).json({ error: 'database_id required' });
+    const { page_id } = req.body;
+    if (!page_id) return res.status(400).json({ error: 'page_id required' });
+    const connection = db.prepare('SELECT connection_id FROM user_connections WHERE user_id = ? AND provider = ?').get(userId, 'notion');
+    if (!connection) return res.status(400).json({ error: 'Notion connection pending' });
+    const handleNotionDB = await createNotionDatabase(userId, connection.connection_id, page_id);
+    if (!handleNotionDB.successful) res.status(400).json({ error: 'Page not found. Please reconnect and give access to the correct page' });
     const up = db.prepare('INSERT INTO user_settings (user_id, notion_database_id, created_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET notion_database_id = excluded.notion_database_id');
-    up.run(userId, database_id, Date.now());
+    up.run(userId, handleNotionDB.db_id, Date.now());
     return res.json({ ok: true });
 });
 
@@ -121,9 +127,6 @@ app.post('/users/:userId/connections/initiate', async (req, res) => {
             // For other providers, use OAuth flow
             cr = await composio.connectedAccounts.initiate(userId, authConfigId);
             db.prepare('INSERT INTO pending_connections (user_id, provider, connection_request_id, created_at) VALUES (?, ?, ?, ?)').run(userId, provider, cr.id, Date.now());
-            if (provider === 'notion') {
-
-            }
             return res.json({ connection_request_id: cr.id, redirect_url: cr.redirectUrl });
         }
     } catch (err) {
@@ -146,8 +149,25 @@ app.post('/users/:userId/connections/finalize-latest', async (req, res) => {
         if (existing && existing.connection_id && existing.connection_id !== connected.id) {
             try { await composio.connectedAccounts.delete(existing.connection_id); } catch (e) { /* ignore cleanup errors */ }
         }
+
+        // if (provider === 'notion') {
+        //     const parentId = await searchNotionPage(userId, connected.id);
+        //     const notionDbCreation = await createNotionDatabase(userId, connected.id, parentId);
+        //     if (!notionDbCreation.successful) {
+        //         await composio.connectedAccounts.delete(connected.id);
+        //         console.log('Could not setup Notion Database');
+        //         return res.status(500).json({ error: 'error in setting up Notion database' });
+        //     }
+        //     db.prepare('INSERT INTO user_settings (user_id, notion_database_id, created_at) VALUES (?, ?, ?) ON CONFLICT(user_id, triggerId), DO UPDATE SET notion_database_id = excluded.notion_database_id').run(userId, notionDbCreation.db_id, Date.now());
+        //     db.prepare('INSERT INTO user_connections (user_id, provider, connection_id, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, provider) DO UPDATE SET connection_id = excluded.connection_id').run(userId, provider, connected.id, Date.now());
+        //     db.prepare('DELETE FROM pending_connections WHERE user_id = ? AND provider = ?').run(userId, provider);
+        //     return res.json({ ok: true, connection_id: connected.id, db_url: notionDbCreation.url });
+        //     }
         db.prepare('INSERT INTO user_connections (user_id, provider, connection_id, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, provider) DO UPDATE SET connection_id = excluded.connection_id').run(userId, provider, connected.id, Date.now());
+
+
         db.prepare('DELETE FROM pending_connections WHERE user_id = ? AND provider = ?').run(userId, provider);
+        
         return res.json({ ok: true, connection_id: connected.id });
     } catch (err) {
         console.log(err.message);
@@ -164,9 +184,11 @@ app.post('/users/:userId/triggers/gmail', async (req, res) => {
         const gmailConnection = db.prepare('SELECT connection_id FROM user_connections WHERE user_id = ? AND provider = ?').get(userId, 'gmail');
         const notionConnection = db.prepare('SELECT connection_id FROM user_connections WHERE user_id = ? AND provider = ?').get(userId, 'notion');
         const geminiConnection = db.prepare('SELECT connection_id FROM user_connections WHERE user_id = ? AND provider = ?').get(userId, 'gemini');
+        const notionDBConnection = db.prepare('SELECT database_id from user_settings WHERE user_id = ?').get(userId);
         if (!gmailConnection) return res.status(400).json({ error: 'Gmail connection not found. Please connect Gmail first.' });
         if (!notionConnection) return res.status(400).json({ error: 'Notion connection not found. Please connect Notion first.' });
         if (!geminiConnection) return res.status(400).json({ error: 'Gemini connection not found. Please connect Gemini using API key first.' });
+        if (!notionDBConnection) return res.status(400).json({ error: 'Notion DB was not created. Please provide the page id first to create the trigger' });
 
         // Create trigger
         const trigger = await composio.triggers.create(
@@ -182,11 +204,11 @@ app.post('/users/:userId/triggers/gmail', async (req, res) => {
             }
         );
         
-        const existingTrigger = db.prepare('SELECT triggerID from user_settings WHERE user_id = ?').get(userId);
-        if (existingTrigger?.triggerID) {
-            await composio.triggers.delete(existingTrigger.triggerID);
+        const existingTrigger = db.prepare('SELECT triggerId from user_settings WHERE user_id = ?').get(userId);
+        if (existingTrigger) {
+            await composio.triggers.delete(existingTrigger.triggerId);
         }
-        db.prepare('INSERT INTO user_settings (user_id, triggerID, created_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET triggerID = excluded.triggerID').run(userId, trigger.triggerId, Date.now());
+        db.prepare('INSERT INTO user_settings (user_id, triggerId, created_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET triggerId = excluded.triggerId').run(userId, trigger.triggerId, Date.now());
         
         return res.json({ 
             success: true, 
