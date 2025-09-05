@@ -44,8 +44,7 @@ function parseGeminiResponse(response, messageID) {
     try {
         const resp_object = JSON.parse(cleaned_response);
         if (!resp_object.assignment_name || !resp_object.course_name || !resp_object.due_date) {
-            console.log(response);
-            return { successful: false, error: "No valid assignment found in email" };
+            return { successful: true, no_assignment: true };
         }
         let prop = [];
         const name_obj = {
@@ -74,13 +73,15 @@ function parseGeminiResponse(response, messageID) {
         prop.push(mail_link);
         return {
             successful: true,
-            prop: prop
+            prop: prop,
+            no_assignment: false
         };
     }
     catch (err) {
         return {
             successful: false,
-            error: err.message
+            error: err.message,
+            no_assignment: false
         };
     }
     
@@ -155,6 +156,10 @@ async function handleMailTrigger(mail) {
     if (!gemini_response.successful) return gemini_response;
     const parse_output = parseGeminiResponse(gemini_response.response, mailObject.messageID);
     if (!parse_output.successful) return parse_output;
+    if (parse_output.successful && parse_output.no_assignment === true) return {
+        successful: true,
+        message: "No Valid assignment found"
+    }
     const notion_exec_output = await logToNotion(parse_output.prop, user_id, settings.notion_database_id);
     if (!notion_exec_output.successful) return notion_exec_output;
     return {

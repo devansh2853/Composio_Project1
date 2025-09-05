@@ -130,11 +130,9 @@ app.post('/users/:userId/connections/initiate', async (req, res) => {
             const connections = db.prepare('SELECT connection_id, provider FROM user_connections WHERE user_id = ?').all(userId);
             for (const connection of connections) {
                 if (connection.provider === provider) {
-                    console.log(`Deleting Connection of ${provider}`);
                     await composio.connectedAccounts.delete(connection.connection_id);
                     db.prepare('DELETE FROM user_connections WHERE user_id = ? AND provider = ?').run(userId, provider);
                     const trigger = db.prepare('SELECT triggerId from user_settings where user_id = ?').get(userId);
-                    console.log(trigger);
                     if (trigger.triggerId != null) {
                         if (provider !== 'gmail') await composio.triggers.delete(trigger.triggerId);
                         db.prepare('UPDATE user_settings SET triggerId = NULL where user_id = ?').run(userId);
@@ -171,19 +169,6 @@ app.post('/users/:userId/connections/finalize-latest', async (req, res) => {
             try { await composio.connectedAccounts.delete(existing.connection_id); } catch (e) { /* ignore cleanup errors */ }
         }
 
-        // if (provider === 'notion') {
-        //     const parentId = await searchNotionPage(userId, connected.id);
-        //     const notionDbCreation = await createNotionDatabase(userId, connected.id, parentId);
-        //     if (!notionDbCreation.successful) {
-        //         await composio.connectedAccounts.delete(connected.id);
-        //         console.log('Could not setup Notion Database');
-        //         return res.status(500).json({ error: 'error in setting up Notion database' });
-        //     }
-        //     db.prepare('INSERT INTO user_settings (user_id, notion_database_id, created_at) VALUES (?, ?, ?) ON CONFLICT(user_id, triggerId), DO UPDATE SET notion_database_id = excluded.notion_database_id').run(userId, notionDbCreation.db_id, Date.now());
-        //     db.prepare('INSERT INTO user_connections (user_id, provider, connection_id, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, provider) DO UPDATE SET connection_id = excluded.connection_id').run(userId, provider, connected.id, Date.now());
-        //     db.prepare('DELETE FROM pending_connections WHERE user_id = ? AND provider = ?').run(userId, provider);
-        //     return res.json({ ok: true, connection_id: connected.id, db_url: notionDbCreation.url });
-        //     }
         db.prepare('INSERT INTO user_connections (user_id, provider, connection_id, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, provider) DO UPDATE SET connection_id = excluded.connection_id').run(userId, provider, connected.id, Date.now());
 
 
@@ -243,7 +228,6 @@ app.post('/users/:userId/triggers/gmail', async (req, res) => {
 
 // This is the webhook endpoint that will receive Gmail trigger events
 app.post("/gmail-webhook", async (req, res) => {
-    // console.log("📩 Gmail trigger received:", req.body);
     try {
         const user_id = req.body.data?.user_id || req.body.data?.extras?.user_id || "";
         const users = db.prepare('SELECT id FROM users WHERE id = ?').get(user_id);
@@ -255,6 +239,7 @@ app.post("/gmail-webhook", async (req, res) => {
             res.status(500).send("Error handling mail trigger");
         }
         else {
+            console.log(handleTrigger.message);
             console.log("Trigger successfully handled");
             res.status(200).send(handleTrigger.message);
         }
