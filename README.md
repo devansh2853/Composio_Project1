@@ -1,6 +1,6 @@
 # 📌 Project Setup Guide
 
-This project integrates **Gmail, Notion, and Gemini** with Composio to automate workflows using triggers and connections.
+This project integrates **Gmail, Notion, and Gemini** with Composio to automate the process of logging Pending Assignments to notion using triggers and connections.
 
 ## 🚀 Prerequisites
 
