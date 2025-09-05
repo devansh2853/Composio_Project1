@@ -43,6 +43,12 @@ AUTHCFG_NOTION=your_notion_auth_config_id
 AUTHCFG_GEMINI=your_gemini_auth_config_id
 ```
 
+### 4. Initilize the Database:
+
+```bash
+   npm run init-db
+```
+
 ---
 
 ## 🗂️ Notion Setup
@@ -54,11 +60,6 @@ AUTHCFG_GEMINI=your_gemini_auth_config_id
    ```
    https://www.notion.so/WorkspaceName/PageName-1234567890abcdef1234567890abcdef
                                                   ↑ your page_id
-   ```
-
-3. Initialize the database:
-   ```bash
-   npm run init-db
    ```
 
 ---
