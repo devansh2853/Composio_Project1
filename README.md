@@ -46,7 +46,7 @@ AUTHCFG_GEMINI=your_gemini_auth_config_id
 ### 4. Initilize the Database:
 
 ```bash
-   npm run init-db
+npm run init-db
 ```
 
 ---
