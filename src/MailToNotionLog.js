@@ -142,7 +142,7 @@ async function handleMailTrigger(mail) {
                     The object must have these 3 keys:
                     - **assignment_name**: The name of the assignment (e.g., "Assignment-7", "Assignment 09").
                     - **course_name**: The subject or course the assignment belongs to (e.g., "Privacy and Security in Online Social Media", "Cloud Computing").
-                    - **due_date**: The full, exact due date for the assignment (e.g., "2025-05-02" YYYY-MM-DD format).
+                    - **due_date**: The full, exact due date for the assignment (e.g., "2025-05-02" YYYY-MM-DD format) (if year is not mentioned assume 2025).
 
                     If the email doesn't contain an assigned assignment with a deadline, return a JSON object that is empty: '{}'.
 

@@ -33,13 +33,14 @@ npm install
 ### 3. Configure Environment Variables
 
 - Create a `.env` file in the project root.
+- On composio platform create auth configs of Gmail, Notion and Gemini.
 - Replace the placeholders with your credentials:
 
 ```env
 COMPOSIO_API_KEY=your_composio_api_key
-GMAIL_AUTH_CONFIG_ID=your_gmail_auth_config_id
-NOTION_AUTH_CONFIG_ID=your_notion_auth_config_id
-GEMINI_AUTH_CONFIG_ID=your_gemini_auth_config_id
+AUTHCFG_GMAIL=your_gmail_auth_config_id
+AUTHCFG_NOTION=your_notion_auth_config_id
+AUTHCFG_GEMINI=your_gemini_auth_config_id
 ```
 
 ---
@@ -99,7 +100,9 @@ npm run start
    ```bash
    ngrok http 3000
    ```
-6. Copy the generated **ngrok URL** and paste it into **Composio → Settings → Events and Triggers → Trigger Webhook URL**.
+6. Copy the generated **ngrok URL**, add /gmail-webhook at the end and paste it into **Composio → Settings → Events and Triggers → Trigger Webhook URL**.
+   The url would look like this:
+   https://xyzabc.ngrok-free.app/gmail-webhook
 
 ---
 
@@ -108,5 +111,3 @@ npm run start
 Your integration pipeline is now active. Composio will send Gmail events to your webhook, which updates your Notion database using Gemini.
 
 ---
-
-⚠️ **Note:** Do not commit your `.env` file to GitHub. Add it to `.gitignore`.
