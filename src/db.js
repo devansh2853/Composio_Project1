@@ -32,8 +32,8 @@ CREATE TABLE IF NOT EXISTS user_connections (
 
 CREATE TABLE IF NOT EXISTS user_settings (
     user_id TEXT PRIMARY KEY,
-    triggerId TEXT,
-    notion_database_id TEXT,
+    triggerId TEXT DEFAULT NULL,
+    notion_database_id TEXT DEFAULT NULL,
     created_at INTEGER NOT NULL,
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );

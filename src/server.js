@@ -28,6 +28,8 @@ app.post('/auth/signup', async (req, res) => {
         const passwordHash = await bcrypt.hash(password, 10);
         const stmt = db.prepare('INSERT INTO users (id, username, password_hash, created_at) VALUES (?, ?, ?, ?)');
         stmt.run(userId, username, passwordHash, Date.now());
+        const user_settings_init = db.prepare('INSERT INTO user_settings (user_id, created_at) VALUES (?, ?)');
+        user_settings_init.run(userId, Date.now());
         return res.json({ user_id: userId });
     } catch (err) {
         if (String(err.message).includes('UNIQUE')) return res.status(409).json({ error: 'username taken' });
@@ -62,9 +64,11 @@ app.get('/users/:userId', (req, res) => {
 app.get('/users/:userId/connections/status', (req, res) => {
     const { userId } = req.params;
     const rows = db.prepare('SELECT provider, connection_id FROM user_connections WHERE user_id = ?').all(userId);
-    const status = { gmail: false, notion: false, gemini: false, trigger: false};
+    const status = { gmail: false, notion: false, gemini: false, trigger: false, db_status: false };
     const trigger = db.prepare('SELECT triggerId from user_settings WHERE user_id = ?').get(userId);
-    if (trigger) status.trigger = true;
+    const db_status = db.prepare('SELECT notion_database_id from user_settings WHERE user_id = ?').get(userId);
+    if (db_status.notion_database_id != null) status.db_status = true;
+    if (trigger.triggerId != null) status.trigger = true;
     for (const r of rows) {
         if (r.provider in status) status[r.provider] = !!r.connection_id;
     }
@@ -82,7 +86,7 @@ app.post('/users/:userId/notion-db', async (req, res) => {
     if (!handleNotionDB.successful) res.status(400).json({ error: 'Page not found. Please reconnect and give access to the correct page' });
     const up = db.prepare('INSERT INTO user_settings (user_id, notion_database_id, created_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET notion_database_id = excluded.notion_database_id');
     up.run(userId, handleNotionDB.db_id, Date.now());
-    return res.json({ ok: true });
+    return res.json({ ok: true, url: handleNotionDB.url});
 });
 
 // Initiate a Composio connection for a provider using an authConfigId
@@ -123,11 +127,30 @@ app.post('/users/:userId/connections/initiate', async (req, res) => {
             });
         } else {
             // For other providers, use OAuth flow
+            const connections = db.prepare('SELECT connection_id, provider FROM user_connections WHERE user_id = ?').all(userId);
+            for (const connection of connections) {
+                if (connection.provider === provider) {
+                    console.log(`Deleting Connection of ${provider}`);
+                    await composio.connectedAccounts.delete(connection.connection_id);
+                    db.prepare('DELETE FROM user_connections WHERE user_id = ? AND provider = ?').run(userId, provider);
+                    const trigger = db.prepare('SELECT triggerId from user_settings where user_id = ?').get(userId);
+                    console.log(trigger);
+                    if (trigger.triggerId != null) {
+                        if (provider !== 'gmail') await composio.triggers.delete(trigger.triggerId);
+                        db.prepare('UPDATE user_settings SET triggerId = NULL where user_id = ?').run(userId);
+
+                    }
+                    if (provider === 'notion') {
+                        db.prepare('UPDATE user_settings SET notion_database_id = NULL where user_id = ?').run(userId);
+                    }
+                }
+            }
             cr = await composio.connectedAccounts.initiate(userId, authConfigId);
             db.prepare('INSERT INTO pending_connections (user_id, provider, connection_request_id, created_at) VALUES (?, ?, ?, ?)').run(userId, provider, cr.id, Date.now());
             return res.json({ connection_request_id: cr.id, redirect_url: cr.redirectUrl });
         }
     } catch (err) {
+        console.log(err.message);
         return res.status(500).json({ error: 'failed to initiate connection' });
     }
 });
@@ -186,7 +209,7 @@ app.post('/users/:userId/triggers/gmail', async (req, res) => {
         if (!gmailConnection) return res.status(400).json({ error: 'Gmail connection not found. Please connect Gmail first.' });
         if (!notionConnection) return res.status(400).json({ error: 'Notion connection not found. Please connect Notion first.' });
         if (!geminiConnection) return res.status(400).json({ error: 'Gemini connection not found. Please connect Gemini using API key first.' });
-        if (!notionDBConnection) return res.status(400).json({ error: 'Notion DB was not created. Please provide the page id first to create the trigger' });
+        if (notionDBConnection.notion_database_id === null) return res.status(400).json({ error: 'Notion DB was not created. Please provide the page id first to create the trigger' });
 
         // Create trigger
         const trigger = await composio.triggers.create(
@@ -203,7 +226,7 @@ app.post('/users/:userId/triggers/gmail', async (req, res) => {
         );
         
         const existingTrigger = db.prepare('SELECT triggerId from user_settings WHERE user_id = ?').get(userId);
-        if (existingTrigger) {
+        if (existingTrigger.triggerId != null) {
             await composio.triggers.delete(existingTrigger.triggerId);
         }
         db.prepare('INSERT INTO user_settings (user_id, triggerId, created_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET triggerId = excluded.triggerId').run(userId, trigger.triggerId, Date.now());
@@ -221,8 +244,11 @@ app.post('/users/:userId/triggers/gmail', async (req, res) => {
 // This is the webhook endpoint that will receive Gmail trigger events
 app.post("/gmail-webhook", async (req, res) => {
     // console.log("📩 Gmail trigger received:", req.body);
-    console.log("Gmail trigger received");
     try {
+        const user_id = req.body.data?.user_id || req.body.data?.extras?.user_id || "";
+        const users = db.prepare('SELECT id FROM users WHERE id = ?').get(user_id);
+        if (!users) return { successful: true, message: "Ignored: no valid user_id in payload" };
+        console.log("Gmail trigger received");
         const handleTrigger = await handleMailTrigger(req.body.data);
         if (!handleTrigger.successful) {
             console.log(handleTrigger.error);

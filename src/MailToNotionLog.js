@@ -133,8 +133,7 @@ async function handleMailTrigger(mail) {
 
     // Load per-user Notion database id
     const settings = db.prepare('SELECT notion_database_id FROM user_settings WHERE user_id = ?').get(user_id);
-    const db_id = settings?.notion_database_id;
-    if (!db_id) return { successful: false, error: 'Notion database_id not set for user' };
+    if (settings.notion_database_id === null) return { successful: false, error: 'Notion database_id not set for user' };
 
     const cust_prompt = `Analyze the following JSON string containing an email object. Identify whether the emails is assigning a new assignment with a specific deadline.
 
@@ -156,7 +155,7 @@ async function handleMailTrigger(mail) {
     if (!gemini_response.successful) return gemini_response;
     const parse_output = parseGeminiResponse(gemini_response.response, mailObject.messageID);
     if (!parse_output.successful) return parse_output;
-    const notion_exec_output = await logToNotion(parse_output.prop, user_id, db_id);
+    const notion_exec_output = await logToNotion(parse_output.prop, user_id, settings.notion_database_id);
     if (!notion_exec_output.successful) return notion_exec_output;
     return {
         successful: true,

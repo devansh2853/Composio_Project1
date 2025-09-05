@@ -19,7 +19,7 @@
 
 
     <h2>Notion</h2>
-    <div>
+    <div id="notionDB">
       <input id="notionPage" placeholder="Notion Page Id" />
       <button onclick="saveNotionDb()">Save Notion DB</button>
     </div>
@@ -85,6 +85,7 @@
         if (j.user_id) { userId = j.user_id; username = inputUsername; localStorage.setItem('user_id', userId); localStorage.setItem('username', username); setAuthUI(); }
         out(JSON.stringify(j));
       }
+
       async function login() {
         const inputUsername = document.getElementById('username').value;
         const password = document.getElementById('password').value;
@@ -93,20 +94,28 @@
         if (j.user_id) { userId = j.user_id; username = j.username || inputUsername; localStorage.setItem('user_id', userId); localStorage.setItem('username', username); setAuthUI(); }
         out(JSON.stringify(j));
       }
-      function logout() {
+
+      async function logout() {
         localStorage.removeItem('user_id');
         localStorage.removeItem('username');
         userId = '';
         username = '';
         setAuthUI();
+        await refreshStatuses();
       }
 
       async function saveNotionDb() {
         if (!userId) return out('No user_id');
         const page_id = document.getElementById('notionPage').value;
         const r = await fetch(`/users/${userId}/notion-db`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ page_id })});
-        out(JSON.stringify(await r.json()));
+        const result = await r.json();
+        if (result.ok) {
+          const notion_section = document.getElementById('notionDB');
+          notion_section.style.display = 'none';
+        } 
+        out(`Database created at url: ${result.url}`);
       }
+      
       async function initiate(provider) {
         if (!userId) return out('No user_id');
         const r = await fetch(`/users/${userId}/connections/initiate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider })});
@@ -169,6 +178,7 @@
                 statusEl.textContent = 'Failed ✗';
                 out(`${provider} connection failed: ${j.error || 'Unknown error'}`);
             }
+            refreshStatuses();
         } catch (err) {
             statusEl.textContent = 'Failed ✗';
             out(`Error finalizing ${provider} connection: ${err.message}`);
@@ -184,6 +194,7 @@
           document.getElementById('notionStatus').textContent = s.notion ? 'Connected ✓' : 'Not connected';
           document.getElementById('geminiStatus').textContent = s.gemini ? 'Connected ✓' : 'Not connected';
           document.getElementById('triggerStatus').textContent = s.trigger ? 'Created ✓' : 'Not created';
+          if (s.db_status) document.getElementById('notionDB').style.display='none';
         } catch (e) {
           out('Failed to fetch connection statuses');
         }
